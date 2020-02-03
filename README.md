@@ -4,7 +4,7 @@ Toward a sophisticated and efficient way of finding words which are trending in 
 
 ## Usage
 ### Readers
-To read the analysis please refer to the Notebook `SUBMISSION Finding Trending Words in News`
+To read the analysis please refer to the Notebook [SUBMISSION](https://github.com/md-nlp-experiments/trending_topics/blob/master/SUBMISSION%20Finding%20Trending%20Words%20in%20News.ipynb) notebook
 
 ### Developers
 To run the code:
