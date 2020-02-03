@@ -1,4 +1,4 @@
-# trending_topics - find trending words from news. 
+# trending_topics - find trending words from news
 
 Toward a sophisticated and efficient way of finding words which are trending in news
 
