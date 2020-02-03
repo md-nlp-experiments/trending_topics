@@ -8,6 +8,7 @@ tmp/
 
 .DS_Store
 __pycache__/
+.ipynb_checkpoints/
 
 # Data file
 rna002_RTRS_2017_11_29.csv
