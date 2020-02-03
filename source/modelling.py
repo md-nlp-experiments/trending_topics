@@ -56,11 +56,12 @@ class TimeBuckets(TransformerMixin):
 
 class LDAVectorizer(TransformerMixin):
     # Wraps the GenSim LDA model into a sklearn transformer format in order to use interchangeably into modelling pipeline
-    def __init__(self, topic_wrd_cutoff=0.1,lda_topics=30, lda_passes=10,lda_workers=4):
+    def __init__(self, topic_wrd_cutoff=0.1,lda_topics=30, lda_passes=10,lda_workers=4, lda_rnd_state=1):
         self.nr_topics=lda_topics
         self.passes=lda_passes
         self.workers=lda_workers
         self.topic_wrd_cutoff=topic_wrd_cutoff
+        self.rnd_state=lda_rnd_state
     
     def build_grid_for_LDA(self,a,nr_topics):
         zz=np.zeros([len(a),nr_topics])
@@ -98,8 +99,8 @@ class LDAVectorizer(TransformerMixin):
 
         self.tfidf = models.TfidfModel(bow_corpus)
         corpus_tfidf = self.tfidf[bow_corpus]
-        self.lda_model_tfidf = gensim.models.LdaMulticore(corpus_tfidf, 
-                                             num_topics=self.nr_topics, id2word=self.dictionary, passes=self.passes, workers=self.workers)
+        self.lda_model_tfidf = gensim.models.LdaMulticore(corpus_tfidf, num_topics=self.nr_topics, 
+                                            id2word=self.dictionary, passes=self.passes, workers=self.workers, random_state=self.rnd_state,)
         return self
 
 class Vectorizer(TransformerMixin):
@@ -107,7 +108,7 @@ class Vectorizer(TransformerMixin):
     # A generic vectorizer abstracts away this part of the pipeline to speed up the experimentation loop
     # Unlike the raw Vectorizers, this class outputs a dataframe where each column is the topic/word from the raw Vactorizer. 
     # This last step is done for convenience in the follow on analytics steps
-    def __init__(self, vect_approach, tokenizer,ngram_range, min_df, max_df, lda_topics):
+    def __init__(self, vect_approach, tokenizer,ngram_range, min_df, max_df, lda_topics, rnd_state):
         self.vect_approach=vect_approach.lower()
         if self.vect_approach=='count':
             self.vectr = CountVectorizer(tokenizer = tokenizer, ngram_range=ngram_range,min_df=min_df,max_df=max_df)
@@ -115,7 +116,7 @@ class Vectorizer(TransformerMixin):
             self.vectr = TfidfVectorizer(tokenizer = tokenizer,ngram_range=ngram_range,min_df=min_df,max_df=max_df)
         elif self.vect_approach=='lda':
             # Note, LDA values hardcoded for now except nr topics
-            self.vectr = LDAVectorizer(topic_wrd_cutoff=0.1,lda_topics=lda_topics, lda_passes=10,lda_workers=4)
+            self.vectr = LDAVectorizer(topic_wrd_cutoff=0.1,lda_topics=lda_topics, lda_passes=10,lda_workers=4, lda_rnd_state=rnd_state)
         else:
             print('Vectorizer approach either "lda", "tfidf" or "count"')
 
@@ -166,14 +167,16 @@ class TrainPipe():
     - the trained pipeline before time bucketing aggregation
     '''
     
-    def __init__(self,col_nm,vect_approach,tokenizer=spacy_tokenizer,ngram=2,min_df=5,max_df=0.6, lda_topics=30):
+    def __init__(self,col_nm,vect_approach,tokenizer=spacy_tokenizer,ngram=2,min_df=5,max_df=0.6, lda_topics=30, rnd_state=1):
         predictor=predictors()
-        vectr=Vectorizer(vect_approach, tokenizer,ngram_range=(1,ngram), min_df=min_df, max_df=max_df, lda_topics=lda_topics)
+        self.rnd_state=rnd_state
+        vectr=Vectorizer(vect_approach, tokenizer,ngram_range=(1,ngram), min_df=min_df, max_df=max_df, lda_topics=lda_topics, rnd_state=self.rnd_state)
 
         self.pipe = Pipeline([("cleaner", predictor),
                         ('vectorizer', vectr),
                         ])
         self.vect_approach=vect_approach.lower()
+
         if self.vect_approach=='count':
             self.aggr_approach='sum'
         elif self.vect_approach in ['tfidf', 'lda']:
@@ -184,7 +187,9 @@ class TrainPipe():
         self.col_nm=col_nm
     
     def fit(self, df, y=None, **fit_params):
-        rnd_input=sample(list(df[self.col_nm]),len(df))
+        random.seed(self.rnd_state)
+        
+        rnd_input=random.sample(list(df[self.col_nm]),len(df))
         
         self.pipe.fit(rnd_input)
 

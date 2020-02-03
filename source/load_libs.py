@@ -3,7 +3,7 @@ sys.path
 sys.path.append('/Users/md/Downloads/trending_topics/env-trending/lib/python3.7/site-packages')
 
 import pandas as pd
-from random import choice, sample
+import random
 import numpy as np
 import csv 
 import datetime

@@ -33,7 +33,7 @@ def summary_stats(df, max_smpl=10):
     df_desc['% Available']=100*((df_desc['Available']/len(df)).round(2))
     df_desc['Types']=df.dtypes
 
-    df_desc['Sample']=[sample(set(df[col_nm].fillna('')),min(max_smpl,len(set(df[col_nm])))) for col_nm in df.columns]
+    df_desc['Sample']=[random.sample(set(df[col_nm].fillna('')),min(max_smpl,len(set(df[col_nm])))) for col_nm in df.columns]
 
     return df_desc
 

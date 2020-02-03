@@ -3,7 +3,7 @@ from statsmodels.tsa.stattools import adfuller
 from sklearn.metrics.pairwise import cosine_similarity
 import numpy as np
 import pandas as pd
-from random import choice, sample
+import random 
 from source.modelling import TimeBuckets
 
 def t_test_dist(df_emb,df_idx,instance,cos_dist_full):
@@ -33,7 +33,7 @@ def get_ground_truths(path):
     df_lbl=pd.read_csv(path, index_col=0)
     all_titles=list(df_lbl.Topic)
     trending_titles=list(df_lbl[df_lbl.Label==1].Topic)
-    return all_titles, trending_titles
+    return all_titles, trending_titles, list(df_lbl.Label)
 
 def pipe_predict(predict_list,df, pipe_ttl,pipe_art, time_interval=5):
     '''
@@ -58,12 +58,11 @@ def pipe_predict(predict_list,df, pipe_ttl,pipe_art, time_interval=5):
     #    While we use titles to find trending words, we use article bodies to calculate cosine similarity as the article body will be richer for a cosine similarity
     #    Therefore the column names may not match with the previous tables as the corpus here is completely different   
     df_flat_eval=pipe_art.transform(list(df[pipe_art.col_nm]))
-    
+    #print(df_aggregate.columns)
     # Ensure topics can be found in the predicted data
     assert(len(set(predict_list)&set(df_aggregate.columns))==len(predict_list))
     # Ensure all data tables have the same column names, ie come from the same experiments
-    assert(all(set(df_aggregate.columns)==set(df_aggregate.columns)))
-    assert(all(set(df_aggregate.columns)==set(df_flat_indicators.columns)))
+    assert(set(df_aggregate.columns)==set(df_flat_indicators.columns))
 
     pred_lbl=[]
     topic_ttls=[]
