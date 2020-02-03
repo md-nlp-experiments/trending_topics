@@ -1,7 +1,7 @@
 
-from load_libs import *
+from source.load_libs import *
 
-def make_plt(df,key_list, top_list):
+def make_plt(df,key_list, top_list, chart_scale=[15,4]):
     #key_list=[list(par.keys())[0] for par in parameters]
     nr_plt_per_row=5
     fig, axs = plt.subplots(int(np.ceil(len(key_list)/nr_plt_per_row)),nr_plt_per_row, 
@@ -16,7 +16,7 @@ def make_plt(df,key_list, top_list):
 
         #if i == len(key_list)-1:
         #    axs[i].legend()
-    plt.setp(axs, yticks=np.linspace(0,4,5))
+    plt.setp(axs, yticks=np.linspace(0,chart_scale[0],chart_scale[1]))
 
 def summary_stats(df, max_smpl=10):
     '''

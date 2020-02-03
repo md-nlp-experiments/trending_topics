@@ -1,9 +1,5 @@
 
-from load_libs import *
-
-
-
-
+from source.load_libs import *
 
 def round_time(date_time,interval):
     ''' Helper to round a datetime string to the closest rounding interval, eg to the closest 5min if interval is 5min '''
@@ -40,10 +36,6 @@ class TimeBuckets(TransformerMixin):
 
     def transform(self, X, **transform_params):
 
-        #word_index=pd.DataFrame(list(self.vocab.keys()),index=list(self.vocab.values()), columns=['term'])
-        #word_index=word_index.sort_index()['term']
-
-        #df_cnt_wrd=pd.DataFrame(X.A,columns=word_index)
         df_cnt_wrd=X.copy()
         # Createa Time bucket column
         df_cnt_wrd['TAKE_DATE_TIME']=list(self.df_index)
@@ -79,7 +71,7 @@ class LDAVectorizer(TransformerMixin):
         return zz
 
     def transform(self, X, **transform_params):
-        pre_process=[spacy_tokenizer(sent) for sent in X.values]
+        pre_process=[spacy_tokenizer(sent) for sent in X]
         bow_corpus = [self.dictionary.doc2bow(doc) for doc in pre_process]
         corpus_tfidf = self.tfidf[bow_corpus]
         res_gensim=[self.lda_model_tfidf[sent] for sent in corpus_tfidf] 
@@ -89,7 +81,7 @@ class LDAVectorizer(TransformerMixin):
 
         # Make table of topic names from topic descriptions
         topic_table=[[wrd.split('*') for wrd in self.lda_model_tfidf.print_topic(idx).split(' + ')] for idx in range(self.nr_topics)]
-        topic_titles=["_".join([j[1:-1] for i, j in topic_table[idx] if float(i)>self.topic_cutoff]) for idx in range(self.nr_topics)]
+        topic_titles=["_".join([j[1:-1] for i, j in topic_table[idx] if float(i)>self.topic_wrd_cutoff]) for idx in range(self.nr_topics)]
         topic_titles=[title if title!='' else 'topic_'+str(i) for (i, title) in enumerate(topic_titles)]
         # Output DataFrame format consistent with other 
         lda_table_df=pd.DataFrame(lda_table, columns=topic_titles)
@@ -97,7 +89,7 @@ class LDAVectorizer(TransformerMixin):
 
     def fit(self, X, y=None, **fit_params):
         # Tokenize via spacy. Tokenizer is not internalized to the class as serializing the spacy tokenizer takes too much space
-        pre_process=[spacy_tokenizer(sent) for sent in X.values]
+        pre_process=[spacy_tokenizer(sent) for sent in X]
         # Work out reuable model dictionary
         self.dictionary = gensim.corpora.Dictionary(pre_process)
         self.dictionary.filter_extremes(no_below=15, no_above=0.5, keep_n=100000)
@@ -174,7 +166,7 @@ class TrainPipe():
     - the trained pipeline before time bucketing aggregation
     '''
     
-    def __init__(self,df,col_nm,vect_approach,tokenizer=spacy_tokenizer,ngram=4,min_df=5,max_df=0.6, lda_topics=30):
+    def __init__(self,col_nm,vect_approach,tokenizer=spacy_tokenizer,ngram=2,min_df=5,max_df=0.6, lda_topics=30):
         predictor=predictors()
         vectr=Vectorizer(vect_approach, tokenizer,ngram_range=(1,ngram), min_df=min_df, max_df=max_df, lda_topics=lda_topics)
 
@@ -190,6 +182,7 @@ class TrainPipe():
             print('Vectorizer approach either "lda", "tfidf" or "count"')   
  
         self.col_nm=col_nm
+    
     def fit(self, df, y=None, **fit_params):
         rnd_input=sample(list(df[self.col_nm]),len(df))
         
@@ -197,3 +190,6 @@ class TrainPipe():
 
         return self
 
+    def transform(self, X, y=None, **fit_params):
+
+        return self.pipe.transform(X)

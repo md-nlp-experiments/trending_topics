@@ -2,8 +2,9 @@ from scipy import stats
 from statsmodels.tsa.stattools import adfuller
 from sklearn.metrics.pairwise import cosine_similarity
 import numpy as np
+import pandas as pd
 from random import choice, sample
-from trending_modelling import TimeBuckets
+from source.modelling import TimeBuckets
 
 def t_test_dist(df_emb,df_idx,instance,cos_dist_full):
     # Taking article index from the word dataframe and the tfidf embedding from the "article body" one
@@ -14,19 +15,7 @@ def t_test_dist(df_emb,df_idx,instance,cos_dist_full):
     _, p2 = stats.ttest_ind(cos_dist_full,cos_dist_inst_rept)
     return p2
 
-def pipe_predict(predict_list,df, time_interval, pipe_ttl,pipe_art):
-    '''
-    The prediction function for the pipeline for the current experiment
-
-    Inputs:
-    predict_list - list of words or ngrams we are predicting
-    df - as returned by the preprocessing pipeline
-    time_interval - relevant time interval for aggregation of results
-    pipe_ttl - trained pipeline convering the TITLES from df into a time series of word counts/frequencies
-    pipe_art - trained pipeline convering the ARTICLES from df into a time series of word counts/frequencies
-     
-    '''
-
+def pipe_transform(df,pipe_ttl,time_interval):
     # df_flat_indicators - dataframe from the same experiment but not aggregated into time buckets. 
     #    We will use this one to calculate cosine similarities between articles belonging to the same trending word
     df_flat_indicators=pipe_ttl.transform(list(df[pipe_ttl.col_nm]))
@@ -35,16 +24,41 @@ def pipe_predict(predict_list,df, time_interval, pipe_ttl,pipe_art):
     time_bkts=TimeBuckets(df_index=list(df['STORY_DATE_TIME']), 
                              aggr_approach=pipe_ttl.aggr_approach, 
                              time_interval=time_interval)
-    
     #df_aggregate - above dataframe aggregated by time buckets
     df_aggregate=time_bkts.transform(df_flat_indicators)
-    
+    return df_flat_indicators, df_aggregate
+
+def get_ground_truths(path):
+    # Load data from file and generate lists of all topics and ground truths
+    df_lbl=pd.read_csv(path, index_col=0)
+    all_titles=list(df_lbl.Topic)
+    trending_titles=list(df_lbl[df_lbl.Label==1].Topic)
+    return all_titles, trending_titles
+
+def pipe_predict(predict_list,df, pipe_ttl,pipe_art, time_interval=5):
+    '''
+    The prediction function for the pipeline for the current experiment
+
+    Inputs:
+    predict_list - list of words or ngrams we are predicting
+    df - as returned by the preprocessing pipeline
+    time_interval - relevant time interval for aggregation of results
+    pipe_ttl - fitted pipeline convering the TITLES from df into a time series of word counts/frequencies
+    pipe_art - fitted pipeline convering the ARTICLES from df into a time series of word counts/frequencies
+     
+    '''
+
+    # df_flat_indicators - dataframe from the same experiment but not aggregated into time buckets. 
+    #    We will use this one to calculate cosine similarities between articles belonging to the same trending word
+    #df_aggregate - above dataframe aggregated by time buckets
+    df_flat_indicators, df_aggregate= pipe_transform(df,pipe_ttl,time_interval)
+        
     # df_flat_eval - these are the actual article vectors we want to calculate cosine similarity on, 
     #    ie these will be likely be tfidf/counts from the article body while the previous tables where from the article titles
     #    While we use titles to find trending words, we use article bodies to calculate cosine similarity as the article body will be richer for a cosine similarity
     #    Therefore the column names may not match with the previous tables as the corpus here is completely different   
     df_flat_eval=pipe_art.transform(list(df[pipe_art.col_nm]))
-
+    
     # Ensure topics can be found in the predicted data
     assert(len(set(predict_list)&set(df_aggregate.columns))==len(predict_list))
     # Ensure all data tables have the same column names, ie come from the same experiments
@@ -69,3 +83,9 @@ def pipe_predict(predict_list,df, time_interval, pipe_ttl,pipe_art):
             topic_ttls.append(wrd)
         else:
             pred_lbl.append(0)
+
+    df_res=pd.DataFrame([],index=predict_list,)
+    df_res['Prediction']=pred_lbl
+    df_res['T_stat']=pred_ttest
+    df_res['ADF_stat']=pred_adf
+    return  pred_lbl, df_res

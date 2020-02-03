@@ -12,6 +12,7 @@ __pycache__/
 
 # Data file
 rna002_RTRS_2017_11_29.csv
+raw_data/rna002_RTRS_2017_11_29.csv
 
 #Environments
 env-trending/
