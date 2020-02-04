@@ -22,3 +22,4 @@ Folder structure should be as follows:
     
 - Lines 1-3 in file `source/load_libs.py` is used to specify environment locations should this be manually needed. 
 Edit or remove appropriately (likely simply removing this should work)
+- You can now run the SUBMISSION notebook where all activities are further described
